@@ -176,3 +176,9 @@ Please ensure all tests pass and code follows the project's linting rules before
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+<p align="center">
+  Built by <a href="https://www.linkedin.com/in/ilham-ahsan-saputra/"><b>Ilham Ahsan Saputra</b></a><br/>
+  <sub>Computer Science Student · Junior Network Engineer · <a href="https://medium.com/@centauryy">Tech Writer</a></sub>
+</p>
+
