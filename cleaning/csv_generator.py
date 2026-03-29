@@ -1,9 +1,9 @@
 """CSV Generator - Produces 3 variants of output CSV.
 
 Generates:
-1. hasil_original.csv - Raw values as extracted from OCR
-2. hasil_mbps.csv - All bandwidth values converted to Mbps
-3. hasil_kbps.csv - All bandwidth values converted to Kbps
+1. traffic_original.csv - Raw values as extracted from OCR
+2. traffic_mbps.csv - All bandwidth values converted to Mbps
+3. traffic_kbps.csv - All bandwidth values converted to Kbps
 
 Uses intelligent unit detection from unit_converter module.
 """
@@ -60,15 +60,15 @@ def generate_all_csv_variants(
 
     # Get timestamp from source filename if present
     base_name = source_path.stem
-    if base_name.startswith('hasil_'):
-        timestamp_part = base_name.replace('hasil_', '')
+    if base_name.startswith('traffic_'):
+        timestamp_part = base_name.replace('traffic_', '')
     else:
         timestamp_part = base_name
 
     # Generate output paths
-    original_path = os.path.join(output_dir, f"hasil_original_{timestamp_part}.csv")
-    mbps_path = os.path.join(output_dir, f"hasil_mbps_{timestamp_part}.csv")
-    kbps_path = os.path.join(output_dir, f"hasil_kbps_{timestamp_part}.csv")
+    original_path = os.path.join(output_dir, f"traffic_original_{timestamp_part}.csv")
+    mbps_path = os.path.join(output_dir, f"traffic_mbps_{timestamp_part}.csv")
+    kbps_path = os.path.join(output_dir, f"traffic_kbps_{timestamp_part}.csv")
 
     # 1. Save original (copy)
     df.to_csv(original_path, index=False)

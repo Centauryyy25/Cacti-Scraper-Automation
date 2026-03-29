@@ -1,5 +1,7 @@
 """Pytest configuration and fixtures for CactiAutomation tests."""
 
+from __future__ import annotations
+
 import os
 import sys
 import tempfile
@@ -37,7 +39,7 @@ def sample_graph_data():
         "title": "Test Graph",
         "graph_url": "http://example.com/graph.png",
         "local_path": "/path/to/graph.png",
-        "keterangan": "Sukses"
+        "description": "Success"
     }
 
 

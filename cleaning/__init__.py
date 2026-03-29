@@ -5,6 +5,8 @@ Provides:
 - csv_generator: Generate 3 CSV variants (original, Mbps, Kbps)
 """
 
+from __future__ import annotations
+
 from cleaning.csv_generator import (
     BANDWIDTH_COLUMNS,
     generate_all_csv_variants,

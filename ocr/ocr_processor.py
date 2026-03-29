@@ -3,6 +3,8 @@
 This preserves backward compatibility while providing a structured import path.
 """
 
+from __future__ import annotations
+
 from easyocr_image_to_text import (
     clean_ocr_text,
     convert_json_to_csv,

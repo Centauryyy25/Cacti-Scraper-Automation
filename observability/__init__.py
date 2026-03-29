@@ -1,5 +1,7 @@
 """Observability package initialization."""
 
+from __future__ import annotations
+
 from observability.metrics import (
     active_workers,
     http_request_duration_seconds,

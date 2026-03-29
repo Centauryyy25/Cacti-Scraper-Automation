@@ -1,4 +1,4 @@
-﻿"""Utilities to load latest run summary and available runs."""
+"""Utilities to load latest run summary and available runs."""
 from __future__ import annotations
 
 import json

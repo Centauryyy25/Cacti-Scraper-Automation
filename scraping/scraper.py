@@ -6,6 +6,8 @@ Security and reliability improvements:
 - Integration with centralized logging
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import re
@@ -117,14 +119,14 @@ def save_graph_image(graph_url: str, title: str, driver, custom_folder: str | No
         if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
             with open(local_path, 'wb') as f:
                 f.write(response.content)
-            logger.info(f"Gambar berhasil disimpan ke {local_path}")
+            logger.info(f"Image saved to {local_path}")
             return local_path
         else:
-            logger.info(f"[ERROR] Gagal mengunduh gambar. Status Code: {response.status_code}, Content-Type: {response.headers.get('Content-Type')}")
+            logger.info(f"[ERROR] Failed to download image. Status Code: {response.status_code}, Content-Type: {response.headers.get('Content-Type')}")
             return None
 
     except Exception as e:
-        logger.info(f"[ERROR] Gagal mendownload gambar: {str(e)}")
+        logger.info(f"[ERROR] Failed to download image: {str(e)}")
         return None
 
 def extract_short_title(full_title: str) -> str:
@@ -190,7 +192,8 @@ def extract_short_title(full_title: str) -> str:
         logger.warning(f"Failed to extract short title: {str(e)}")
         return full_title
 
-def retry_on_stale_element(max_retries=3, delay=1):
+def retry_on_stale_element(max_retries: int = 3, delay: int = 1):
+    """Decorator that retries a function on StaleElementReferenceException."""
     def decorator(func):
         def wrapper(*args, **kwargs):
             retries = 0
@@ -205,25 +208,25 @@ def retry_on_stale_element(max_retries=3, delay=1):
         return wrapper
     return decorator
 
-def check_and_click_zoom(driver, username):
+def check_and_click_zoom(driver: webdriver.Chrome, username: str) -> tuple[bool, str | object]:
+    """Check for zoom link on the current page and return it if found."""
     try:
-        # 1. Cek apakah ada pesan "no data"
+        # Check for 'no data' messages
         no_data_markers = [
             "No data sources present",
-            "Tidak ada data",
-            "No matching records found"
+            "No matching records found",
         ]
 
         for marker in no_data_markers:
             if marker in driver.page_source:
-                logger.warning(f"Data tidak tersedia untuk {username}")
-                return False, f"Data tidak tersedia (Marker: {marker})"
+                logger.warning(f"No data available for {username}")
+                return False, f"No data available (Marker: {marker})"
 
         debug_dir = "Debug/debug_screenshots"
         os.makedirs(debug_dir, exist_ok=True)
         driver.save_screenshot(f"{debug_dir}/{username}_before_zoom_check.png")
 
-        # 2. Multi-strategy untuk menemukan link Zoom
+        # Multi-strategy to find Zoom link
         zoom_selectors = [
             {"type": "xpath", "value": "//a[contains(@href,'graph.php?action=zoom')]"},
             {"type": "xpath", "value": "//a[img[contains(@src,'graph_image.php')]]"},
@@ -247,96 +250,88 @@ def check_and_click_zoom(driver, username):
                         EC.presence_of_element_located((By.CSS_SELECTOR, selector["value"]))
                     )
 
-                logger.info(f"[DEBUG] Link Zoom ditemukan dengan {selector['type']}: {selector['value']}")
+                logger.info(f"[DEBUG] Zoom link found via {selector['type']}: {selector['value']}")
                 return True, zoom_link
             except Exception as e:
-                logger.info(f"[DEBUG] Gagal menemukan Zoom link dengan selector {selector['value']}: {str(e)}")
+                logger.info(f"[DEBUG] Failed to find Zoom link with selector {selector['value']}: {str(e)}")
                 continue
 
-        # 3. Fallback: Cek apakah ada grafik tanpa link zoom
+        # Fallback: Check for graphs without zoom links
         graph_images = driver.find_elements(By.XPATH, "//img[contains(@src,'graph_image.php')]")
         if graph_images:
-            logger.warning(f"Grafik ditemukan tapi tanpa link Zoom untuk {username}")
-            return False, "Grafik ada tetapi tidak ada link Zoom"
+            logger.warning(f"Graph found but no Zoom link for {username}")
+            return False, "Graph exists but no Zoom link"
 
-        return False, "Link Zoom tidak ditemukan dengan semua selector"
+        return False, "Zoom link not found with any selector"
 
     except Exception as e:
-        logger.error(f"Terjadi error dalam pencarian Zoom untuk {username}: {str(e)}")
+        logger.error(f"Error while searching for Zoom for {username}: {str(e)}")
         logger.error("Error detail:", exc_info=True)
-        # Print full traceback untuk debugging lebih lanjut
-        return False, f"Error dalam pencarian Zoom: {str(e)}"
+        return False, f"Error in Zoom search: {str(e)}"
 
 @retry_on_stale_element(max_retries=3, delay=1)
-def fill_filter_input(driver, username):
+def fill_filter_input(driver: webdriver.Chrome, username: str) -> None:
+    """Clear the filter input and type the given username."""
     filter_input = driver.find_element(By.NAME, 'filter')
     filter_input.clear()
     filter_input.send_keys(username)
 
-# NOTE: Removed duplicate setup_logging() - use utils.logging_config.setup_logging instead
 
-# Fungsi untuk mengotomatiskan login dan scraping untuk setiap username
-def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_url="", userLogin=None, userPass=None, usernames=None, custom_folder=None):
+def login_and_scrape(
+    date1: str = "2025-03-01 00:00",
+    date2: str = "2025-04-01 00:00",
+    target_url: str = "",
+    user_login: str | None = None,
+    user_pass: str | None = None,
+    usernames: list[str] | None = None,
+    custom_folder: str | None = None,
+) -> dict:
+    """Log into Cacti NMS and scrape traffic graph images for each username."""
     driver = None
     results = {
         "total_processed": 0,
-        "success": 0,        # Integer, bukan list
-        "failed": 0,         # Integer, bukan list
+        "success": 0,
+        "failed": 0,
         "processed_usernames": [],
         "errors": []
     }
 
-
     progress.scraping['total'] = len(usernames)
-    # Tentukan folder untuk menyimpan gambar lokal
 
 
     try:
-        logger.info("Memulai WebDriver...")
-        chrome_options = get_chrome_options()  # Use config-driven options
+        logger.info("Starting WebDriver...")
+        chrome_options = get_chrome_options()
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-        # Use configurable timeout
         wait_timeout = getattr(settings, 'SELENIUM_WAIT_TIMEOUT', 15)
         wait = WebDriverWait(driver, wait_timeout)
 
-        logger.info(f"Membuka halaman login: {target_url}")
-        driver.get(target_url)  # Gunakan URL dari parameter
+        logger.info(f"Opening login page: {target_url}")
+        driver.get(target_url)
 
-        # # Telkom
-        # print("[INFO] Mengisi username dan password...")
-        # username_input = wait.until(EC.presence_of_element_located((By.NAME, 'login_username')))
-        # password_input = driver.find_element(By.NAME, 'login_password')
-        # login_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and @value='Login']")))
-
-        # username_input.send_keys({userLogin})
-        # password_input.send_keys({userPass})
-        # login_button.click()
-
-        # FS
-        logger.info("Mengisi username dan password...")
+        logger.info("Filling username and password...")
         username_input = wait.until(EC.presence_of_element_located((By.NAME, 'login_username')))
         password_input = driver.find_element(By.NAME, 'login_password')
         login_button = driver.find_element(By.CLASS_NAME, 'button--primary')
 
-        username_input.send_keys(userLogin)
-        password_input.send_keys(userPass)
+        username_input.send_keys(user_login)
+        password_input.send_keys(user_pass)
         login_button.click()
-
 
         time.sleep(4)
 
-        logger.info("Mengisi tanggal awal...")
+        logger.info("Filling start date...")
         date1_input = wait.until(EC.presence_of_element_located((By.ID, "date1")))
         date1_input.clear()
-        date1_input.send_keys(date1)  # Use the passed parameter
+        date1_input.send_keys(date1)
 
-        logger.info("Mengisi tanggal akhir...")
+        logger.info("Filling end date...")
         date2_input = driver.find_element(By.ID, "date2")
         date2_input.clear()
-        date2_input.send_keys(date2)  # Use the passed parameter
+        date2_input.send_keys(date2)
 
-        logger.info("Menekan tombol Refresh...")
+        logger.info("Clicking Refresh button...")
         refresh_button = driver.find_element(By.NAME, "button_refresh_x")
         refresh_button.click()
 
@@ -346,50 +341,43 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
             base_folder = "downloaded_graphs"
             custom_folder = os.path.join(base_folder, f"scraping_{timestamp_str}")
 
-        # Pastikan folder ada
+        # Ensure folder exists
         os.makedirs(custom_folder, exist_ok=True)
-        logger.info(f"Gambar akan disimpan di: {custom_folder}")
+        logger.info(f"Images will be saved to: {custom_folder}")
 
-        # Set folder global untuk digunakan di fungsi lain
-        global current_scraping_folder
-        current_scraping_folder = custom_folder
-
-        # Proses otomatis untuk setiap username
+        # Process each username
         for i, username in enumerate(usernames, 1):
             results["total_processed"] += 1
             results["processed_usernames"].append(username)
             progress.scraping.update({
             'current': i,
             'total': len(usernames),
-            'message': f'Memproses {username} ({i}/{len(usernames)})',
+            'message': f'Processing {username} ({i}/{len(usernames)})',
             'current_file': username,
             'status': 'running'
             })
             try:
                 fill_filter_input(driver, username)
 
-                logger.info("[DEBUG] Mencari tombol Go...")
+                logger.info("[DEBUG] Looking for Go button...")
                 go_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//input[@value='Go' and @title='Set/Refresh Filters']"))
                 )
                 if not go_button:
-                    error_msg = f"Gagal Menemukan btton {username}"
+                    error_msg = f"Failed to find Go button for {username}"
                     logger.error(f"{error_msg}")
                     results["failed"] += 1
                     results["errors"].append({"username": username, "error": error_msg})
-                logger.info("[DEBUG] Tombol Go ditemukan, mencoba klik...")
+                logger.info("[DEBUG] Go button found, attempting click...")
                 # driver.save_screenshot(f"debug_{username}_before_go.png")
                 go_button.click()
-                logger.info("[DEBUG] Tombol Go diklik")
+                logger.info("[DEBUG] Go button clicked")
 
-                # [Sebelum mencari link Zoom]
-                logger.info(f"[DEBUG] Memeriksa ketersediaan data untuk {username}")
-
-                # Gunakan fungsi deteksi zoom yang ditingkatkan
+                logger.info(f"[DEBUG] Checking data availability for {username}")
                 zoom_found, zoom_result = check_and_click_zoom(driver, username)
 
                 if not zoom_found:
-                    error_msg = f"Gagal menemukan Zoom untuk {username}: {zoom_result}"
+                    error_msg = f"Failed to find Zoom for {username}: {zoom_result}"
                     logger.error(f"{error_msg}")
 
                     # IMPROVEMENT: Store diagnostics in per-run folder
@@ -398,66 +386,54 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
                         no_zoom_dir = os.path.join(os.path.dirname(custom_folder), "diagnostics")
                     else:
                         no_zoom_dir = "no_zoom_reports"
-                    os.makedirs(no_zoom_dir, exist_ok=True)  # exist_ok=True agar tidak error jika folder sudah ada
+                    os.makedirs(no_zoom_dir, exist_ok=True)
 
-                    # 2. Simpan screenshot ke folder baru
+                    # Save screenshot to diagnostics folder
                     screenshot_path = os.path.join(no_zoom_dir, f"no_zoom_{username}.png")
                     driver.save_screenshot(screenshot_path)
-
-                    # (Opsional) Simpan HTML ke folder yang sama
-                    # html_path = os.path.join(no_zoom_dir, f"no_zoom_{username}_page.html")
-                    # with open(html_path, "w", encoding="utf-8") as f:
-                    #     f.write(driver.page_source)
-
-                    # Simpan detail HTML untuk analisis
-                    # with open(f"no_zoom_{username}_page.html", "w", encoding="utf-8") as f:
-                    #     f.write(driver.page_source)
 
                     save_error(f"NoZoom-{username}", driver.current_url, f"no_zoom_{username}.png", error_msg)
                     results["failed"] += 1
                     results["errors"].append({"username": username, "error": error_msg})
                     continue
 
-                # Jika zoom ditemukan
+                # If zoom link was found
                 zoom_link = zoom_result
-                logger.debug("Klik link Zoom...")
+                logger.debug("Clicking Zoom link...")
                 try:
                     driver.execute_script("arguments[0].scrollIntoView({behavior:'smooth',block:'center'});", zoom_link)
-                    time.sleep(1)  # Beri waktu untuk scroll
+                    time.sleep(1)  # Wait for scroll
                     driver.execute_script("arguments[0].click();", zoom_link)
                 except Exception as click_error:
                     error_msg = f"Invalid zoom {username}"
                     logger.error(f"{error_msg}")
-                    logger.error(f"Gagal klik Zoom: {str(click_error)}")
+                    logger.error(f"Failed to click Zoom: {str(click_error)}")
                     results["failed"] += 1
                     results["errors"].append({"username": username, "error": error_msg})
                     continue
 
             except Exception:
-                error_msg = f"Gagal Menemukan {username}"
+                error_msg = f"Failed to find {username}"
                 logger.error(f"{error_msg}")
 
-                # Simpan error ke database
                 short_title = f"Error-{username}"
                 save_error(f"NoZoom-{username}", driver.current_url, f"no_zoom_{username}.png", error_msg)
                 results["failed"] += 1
                 results["errors"].append({"username": username, "error": error_msg})
                 continue
 
-            # Coba ambil gambar graph
+            # Try to capture graph image
             try:
-                logger.info("Menunggu gambar Graph muncul setelah klik Zoom...")
+                logger.info("Waiting for graph image after Zoom click...")
                 graph_img = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, "//img[contains(@src, 'graph_image.php')]"))
                 )
                 graph_src = graph_img.get_attribute("src")
-                logger.info(f"Gambar Graph ditemukan: {graph_src}")
-
-                # Lanjutkan dengan penyimpanan gambar dan data lainnya...
+                logger.info(f"Graph image found: {graph_src}")
             except Exception as e:
-                error_msg = f"Gagal Menemukan gambar {username}"
+                error_msg = f"Failed to find graph image for {username}"
                 logger.error(f"{error_msg}")
-                logger.error(f"Gambar Graph tidak ditemukan untuk {username}. Error: {str(e)}")
+                logger.error(f"Graph image not found for {username}. Error: {str(e)}")
                 results["failed"] += 1
                 results["errors"].append({"username": username, "error": error_msg})
                 continue
@@ -467,7 +443,7 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
                 base_url = target_url.rstrip('/') if target_url else ""
                 graph_src = base_url + "/" + graph_src.lstrip('/')
 
-            logger.info("Mengambil judul grafik...")
+            logger.info("Extracting graph title...")
             try:
                 td_element = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, "//td[contains(., 'Zooming Graph')]"))
@@ -478,16 +454,16 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
                 # Example: fsr-bsimanyarlx, fsr-bsibatununggallx
                 short_title = username
 
-                logger.info(f"HASIL Username: {username}")
-                logger.info(f"Judul pendek (filename): {short_title}")
-                logger.info(f"Judul asli CACTI: {title_text}")
-                logger.info(f"Gambar URL: {graph_src}")
-                logger.debug(f"Folder tujuan: {custom_folder}")
+                logger.info(f"Result Username: {username}")
+                logger.info(f"Short title (filename): {short_title}")
+                logger.info(f"Original CACTI title: {title_text}")
+                logger.info(f"Image URL: {graph_src}")
+                logger.debug(f"Destination folder: {custom_folder}")
 
                 local_path = save_graph_image(graph_src, short_title, driver, custom_folder)
 
                 if local_path:
-                    save_graph_info(short_title, graph_src, local_path, "Sukses")
+                    save_graph_info(short_title, graph_src, local_path, "Success")
                     results["success"] += 1
                     logger.info(f"[SUCCESS] Processed {username} successfully - saved to {local_path}")
                 else:
@@ -496,34 +472,34 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
                     results["errors"].append({"username": username, "error": "Failed to save image"})
 
             except Exception as e:
-                error_msg = f"Gagal mengambil graph untuk {username}. Error: {str(e)}"
+                error_msg = f"Failed to get graph for {username}. Error: {str(e)}"
                 logger.error(f"{error_msg}")
                 results["failed"] += 1
                 results["errors"].append({"username": username, "error": error_msg})
                 continue
 
 
-            # Klik Preview Mode (keluar dari blok try-except atas)
+            # Click Preview Mode to return to graph list
             try:
-                logger.info("Klik link Preview Mode...")
+                logger.info("Clicking Preview Mode link...")
                 preview_link = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.LINK_TEXT, "Preview Mode"))
                 )
                 preview_link.click()
 
-                logger.info("Menunggu halaman Preview Mode terbuka...")
+                logger.info("Waiting for Preview Mode page...")
                 WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.NAME, "filter"))
                 )
 
-                logger.info(f"Menekan tombol Go lagi untuk username: {username} di Preview Mode")
+                logger.info(f"Clicking Go button again for {username} in Preview Mode")
                 go_button = driver.find_element(By.XPATH, "//input[@value='Go' and @title='Set/Refresh Filters']")
                 go_button.click()
 
                 time.sleep(2)
 
             except Exception:
-                logger.error(f"Gagal klik Preview Mode untuk {username}. Lanjut username berikutnya...")
+                logger.error(f"Failed to click Preview Mode for {username}. Continuing to next username...")
                 continue
 
 
@@ -534,14 +510,11 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
         logger.info(f"Failed: {results['failed']}")
         logger.info(f"Missing: {len(usernames) - results['total_processed']}")
 
-        progress.scraping['message'] = f'Selesai. Sukses: {results["success"]}, Gagal: {results["failed"]}'
+        progress.scraping['message'] = f'Complete. Success: {results["success"]}, Failed: {results["failed"]}'
 
-        #     Calculate unprocessed usernames
         all_processed = set(results["processed_usernames"])
         all_usernames = set(usernames)
         unprocessed = all_usernames - all_processed
-
-        # Ganti bagian ini di akhir fungsi login_and_scrape():
         with open("scraping_report.txt", "w") as report_file:
             report_file.write("SCRAPING REPORT\n")
             report_file.write(f"Date range: {date1} to {date2}\n")
@@ -549,7 +522,6 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
             report_file.write(f"Successful: {results['success']}\n")
             report_file.write(f"Failed: {results['failed']}\n\n")
 
-            # Perbaikan: gunakan data yang benar
             processed_usernames = set(results["processed_usernames"])
             all_usernames = set(usernames)
             unprocessed = all_usernames - processed_usernames
@@ -557,7 +529,7 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
             if unprocessed:
                 report_file.write("UNPROCESSED USERNAMES:\n")
                 for u in unprocessed:
-                    report_file.write(f"{u}: Tidak diproses sama sekali (missed in loop)\n")
+                    report_file.write(f"{u}: Not processed (missed in loop)\n")
                 report_file.write("\n")
 
             if results["errors"]:
@@ -567,17 +539,17 @@ def login_and_scrape(date1="2025-03-01 00:00", date2="2025-04-01 00:00", target_
 
 
     except Exception as e:
-        progress.scraping['message'] = f'Error saat memproses {username}: {str(e)}'
+        progress.scraping['message'] = f'Error processing {username}: {str(e)}'
         traceback.print_exc()
 
     # Write report to file
 
     finally:
         if driver:
-            logger.info("Menutup browser...")
+            logger.info("Closing browser...")
             progress.scraping.update({
                 'status': 'complete',
-                'message': f'Scraping selesai! Sukses: {results["success"]}, Gagal: {results["failed"]}',
+                'message': f'Scraping complete! Success: {results["success"]}, Failed: {results["failed"]}',
                 'current_file': '',
                 'current': len(usernames)
             })

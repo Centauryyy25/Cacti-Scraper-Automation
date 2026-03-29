@@ -1,5 +1,7 @@
 """Storage package initialization."""
 
+from __future__ import annotations
+
 from storage.database import (
     Database,
     ErrorRecord,

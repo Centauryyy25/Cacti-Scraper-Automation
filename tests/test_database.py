@@ -1,5 +1,7 @@
 """Unit tests for storage/database module."""
 
+from __future__ import annotations
+
 import os
 
 import pytest

@@ -1,5 +1,6 @@
 """Unit tests for config module."""
 
+from __future__ import annotations
 
 
 class TestValidateCactiUrl:

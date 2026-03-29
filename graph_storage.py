@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -47,11 +49,8 @@ def save_data(data, filepath):
         logger.error(f"Error saving data to {filepath}: {str(e)}")
         return False
 
-def save_graph_info(title, graph_url, local_path, keterangan="Sukses"):
-    """
-    Save graph information to the JSON storage
-    Replaces the save_to_database function
-    """
+def save_graph_info(title: str, graph_url: str, local_path: str, description: str = "Success") -> bool:
+    """Save graph information to the JSON storage."""
     ensure_storage_dir()
 
     # Create record
@@ -61,7 +60,7 @@ def save_graph_info(title, graph_url, local_path, keterangan="Sukses"):
         "title": title,
         "graph_url": graph_url,
         "local_path": local_path,
-        "keterangan": keterangan,
+        "description": description,
         "timestamp": timestamp
     }
 

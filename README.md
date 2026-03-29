@@ -1,191 +1,187 @@
-# 🌵 Cacti Automation Indonesia
+# Cacti NMS Pipeline
 
-Otomatisasi scraping dan OCR untuk data traffic dari Cacti NMS.
+Automated network traffic data extraction from Cacti NMS using Selenium, EasyOCR, and intelligent unit conversion.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
 ![Flask](https://img.shields.io/badge/Flask-3.0+-green?logo=flask)
+![Selenium](https://img.shields.io/badge/Selenium-4.15+-orange?logo=selenium)
+![EasyOCR](https://img.shields.io/badge/EasyOCR-1.7+-purple)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+![CI](https://github.com/Centauryyy25/cacti-automation-indonesia/actions/workflows/ci.yml/badge.svg)
 
 ---
 
-## 📸 Screenshot
+## Architecture
 
-<p align="center">
-  <img src="static/download.jpg" alt="Dashboard Preview" width="600">
-</p>
+```
+                    Cacti NMS
+                        |
+           Step 1: Selenium Scraper
+           (login, navigate, screenshot)
+                        |
+                 raw_screenshots/
+                        |
+            Step 2: EasyOCR Processing
+            (preprocess, extract, parse)
+                        |
+              processed_output/*.json
+                        |
+           Step 3: CSV Generation
+           (unit detection & conversion)
+                        |
+        traffic_original.csv  traffic_mbps.csv  traffic_kbps.csv
+```
 
----
+## Features
 
-## ⚡ Quick Start (3 Langkah!)
+- **Automated scraping** of Cacti NMS traffic graphs via Selenium with configurable headless mode
+- **OCR text extraction** using EasyOCR with image preprocessing for improved accuracy
+- **Intelligent unit conversion** with automatic bandwidth unit detection (bps, Kbps, Mbps)
+- **Three CSV output variants**: original values, normalized to Mbps, normalized to Kbps
+- **Web dashboard** built with Flask for one-click pipeline execution with real-time progress
+- **Observability** via Prometheus metrics endpoint, structured logging, and pipeline summaries
 
-### 1. Install Dependencies
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Web Framework | Flask + Flask-CORS |
+| Scraping | Selenium + ChromeDriver |
+| OCR | EasyOCR + OpenCV |
+| Data Processing | Pandas + NumPy |
+| Configuration | Pydantic Settings |
+| Database | SQLite (pipeline metadata) |
+| CI/CD | GitHub Actions (ruff + pytest) |
+
+## Project Structure
+
+```
+cacti-nms-pipeline/
+├── web/                    # Flask web application
+├── scraping/               # Selenium scraper module
+├── ocr/                    # OCR processing (parallel support)
+├── cleaning/               # CSV generation & unit conversion
+├── storage/                # SQLite database layer
+├── observability/          # Prometheus metrics
+├── services/               # Email & Slack notifications
+├── tracking/               # Progress tracking for UI
+├── utils/                  # Logging, retry, summary parser
+├── templates/              # HTML templates (dashboard, logs, summary)
+├── tests/                  # Unit tests
+├── config.py               # Pydantic-based configuration
+├── main_pipeline.py        # 3-step pipeline orchestrator
+├── easyocr_image_to_text.py # OCR extraction engine
+└── graph_storage.py        # JSON-based graph data storage
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10+
+- Chrome or Chromium browser
+- ChromeDriver (auto-managed by `webdriver-manager`)
+
+### Installation
+
 ```bash
+# Clone the repository
+git clone https://github.com/Centauryyy25/cacti-automation-indonesia.git
+cd cacti-automation-indonesia
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+# .venv\Scripts\activate   # Windows
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Setup Environment
+### Configuration
+
 ```bash
 cp .env.example .env
-# Edit .env dengan data Anda
+# Edit .env with your Cacti NMS credentials and server URL
 ```
 
-### 3. Jalankan!
+### Usage
+
+#### Web Dashboard
+
 ```bash
 python -m web.app
+# Open http://localhost:5000
 ```
 
-Buka browser: **http://localhost:5000** ✅
+1. Enter your Cacti NMS URL, credentials, and device names
+2. Select the date range
+3. Click **Run Pipeline**
+4. Download results in your preferred format (Original / Mbps / Kbps)
 
----
+#### CLI
 
-## 🔧 Konfigurasi (.env)
+```bash
+# Run the full pipeline
+python main_pipeline.py
 
-Edit file `.env` dengan data berikut:
-
-```env
-# WAJIB - Data Login Cacti
-CACTI_USERNAME=username_anda
-CACTI_PASSWORD=password_anda
-CACTI_BASE_URL=https://your-cacti-server.com/
-
-# OPTIONAL - untuk keamanan
-CACTI_ALLOWED_URLS=https://your-cacti-server.com/
-
-# OPTIONAL - Mode Headless (tanpa tampilan browser)
-SELENIUM_HEADLESS=true
+# Run OCR only on existing screenshots
+python easyocr_image_to_text.py --folder output/<timestamp>/raw_screenshots
 ```
 
----
+## Output
 
-## 🖥️ Cara Pakai Web Dashboard
-
-1. **Buka browser** → `http://localhost:5000`
-2. **Isi form:**
-   - **Target URL:** URL Cacti Anda
-   - **Username & Password:** Login Cacti
-   - **Usernames:** List device (pisahkan dengan koma)
-   - **Date Range:** Pilih rentang waktu
-3. **Klik "Run Pipeline"**
-4. **Tunggu proses selesai**
-5. **Download hasil:** Pilih format (Original/Mbps/Kbps)
-
----
-
-## 📁 Hasil Output
-
-Setelah pipeline selesai, hasil disimpan di folder `output/<timestamp>/`:
+After a pipeline run, results are saved to `output/<timestamp>/`:
 
 ```
 output/2026-01-03_14-30-00/
-├── raw_screenshots/        # Gambar yang di-scrape
-├── processed_output/       # Hasil OCR (JSON)
-├── hasil_original_*.csv    # Data asli
-├── hasil_mbps_*.csv        # Data dalam Mbps
-├── hasil_kbps_*.csv        # Data dalam Kbps
-└── summary.json            # Ringkasan run
+├── raw_screenshots/            # Scraped graph images
+├── processed_output/           # OCR results (JSON)
+├── traffic_original_*.csv      # Raw extracted values
+├── traffic_mbps_*.csv          # All values in Mbps
+├── traffic_kbps_*.csv          # All values in Kbps
+├── summary.json                # Machine-readable run summary
+└── summary.log                 # Human-readable run summary
 ```
 
----
-
-## 🐳 Docker (Opsional)
+## Testing
 
 ```bash
-# Build dan jalankan
-docker-compose up -d
-
-# Buka di browser
-http://localhost:5000
-```
-
----
-
-## 📋 Requirements
-
-- **Python 3.10+**
-- **Chrome/Chromium** (untuk Selenium)
-- **ChromeDriver** (otomatis via `webdriver-manager`)
-
-### Install Chrome di Linux:
-```bash
-# Ubuntu/Debian
-sudo apt install chromium-browser
-
-# Atau download dari:
-# https://www.google.com/chrome/
-```
-
----
-
-## 🛠️ Troubleshooting
-
-### Error: "ChromeDriver not found"
-```bash
-pip install webdriver-manager
-```
-
-### Error: "Module not found"
-```bash
-pip install -r requirements.txt
-```
-
-### Error: "Connection refused"
-- Pastikan URL Cacti benar
-- Cek username/password
-- Cek firewall/network
-
----
-
-## 📂 Struktur Folder
-
-```
-cacti-automation/
-├── web/                 # Flask web app
-├── scraping/            # Selenium scraper
-├── cleaning/            # Data cleaning & CSV
-├── ocr/                 # EasyOCR processing
-├── templates/           # HTML templates
-├── static/              # CSS, images
-├── output/              # Hasil scraping
-└── tests/               # Unit tests
-```
-
----
-
-## 🧪 Testing
-
-```bash
-# Jalankan semua tests
+# Run all tests
 python -m pytest
 
-# Dengan coverage
-python -m pytest --cov
+# With coverage report
+python -m pytest --cov=. --cov-report=term-missing
+
+# Run specific test file
+python -m pytest tests/test_database.py -v
 ```
 
----
+## Docker
 
-## 📝 License
+```bash
+docker-compose up -d
+# Open http://localhost:5000
+```
 
-MIT License - Bebas digunakan dan dimodifikasi.
+## Configuration Reference
 
----
+See [`.env.example`](.env.example) for all available configuration options including:
 
-## ❓ FAQ
+- Cacti NMS URL and credentials
+- Selenium headless mode and timeouts
+- OCR settings (GPU, batch size, languages)
+- Retry configuration with exponential backoff
+- CORS origins and web server settings
 
-<details>
-<summary><b>Q: Bagaimana cara menambah device baru?</b></summary>
-<p>Masukkan nama device di field "Usernames", pisahkan dengan koma.
-Contoh: <code>device1, device2, device3</code></p>
-</details>
+## Contributing
 
-<details>
-<summary><b>Q: Format tanggal yang benar?</b></summary>
-<p>Gunakan format datetime picker di browser. Contoh: <code>2025-01-01 00:00</code></p>
-</details>
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'Add your feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
 
-<details>
-<summary><b>Q: Hasil OCR tidak akurat?</b></summary>
-<p>Pastikan gambar grafik cukup jelas. OCR bekerja lebih baik dengan resolusi tinggi.</p>
-</details>
+## License
 
----
-
-**Made with ❤️ in Indonesia** 🇮🇩
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

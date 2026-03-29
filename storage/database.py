@@ -43,7 +43,7 @@ class GraphRecord:
     title: str
     graph_url: str
     local_path: str
-    keterangan: str = "Sukses"
+    description: str = "Success"
     run_id: str = ""
     id: int | None = None
     timestamp: str | None = None
@@ -107,7 +107,7 @@ class Database:
                     title TEXT NOT NULL,
                     graph_url TEXT NOT NULL,
                     local_path TEXT NOT NULL,
-                    keterangan TEXT DEFAULT 'Sukses',
+                    description TEXT DEFAULT 'Success',
                     run_id TEXT,
                     timestamp TEXT NOT NULL,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -156,10 +156,10 @@ class Database:
         """Save a graph record and return its ID."""
         with self._get_connection() as conn:
             cursor = conn.execute("""
-                INSERT INTO graphs (title, graph_url, local_path, keterangan, run_id, timestamp)
+                INSERT INTO graphs (title, graph_url, local_path, description, run_id, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (record.title, record.graph_url, record.local_path,
-                  record.keterangan, record.run_id, record.timestamp))
+                  record.description, record.run_id, record.timestamp))
             record_id = cursor.lastrowid
             logger.debug("Saved graph record: %s (ID: %d)", record.title, record_id)
             return record_id
@@ -328,14 +328,14 @@ def _get_db() -> Database:
 
 
 def save_graph_info(title: str, graph_url: str, local_path: str,
-                    keterangan: str = "Sukses", run_id: str = "") -> bool:
+                    description: str = "Success", run_id: str = "") -> bool:
     """Backward-compatible wrapper for save_graph."""
     try:
         record = GraphRecord(
             title=title,
             graph_url=graph_url,
             local_path=local_path,
-            keterangan=keterangan,
+            description=description,
             run_id=run_id
         )
         _get_db().save_graph(record)

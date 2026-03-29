@@ -1,4 +1,0 @@
-ID,ISP,VLAN ID,Service ID,Inbound Current,Inbound Average,Inbound Max,Outbound Current,Outbound Average,Outbound Max,Period From,Period To
-fsr-bsiayanlx,,,,406.96 k,691.25 k,2.24 M,383.04 k,1.06 M,7.90 M,2025-12-01 00: 0000,2026-01.01 000000
-fsr-bsibatamctlx,,,,403.40 k,1.05 M,3.38 M,2.03 M,4.34 M,9.69 M,2025-12-01 00: 0000,2026-01.01 00: 00: 00
-fsr-bsibatamindolx,,,,464.57 k,652.41 k,3.33 M,2.45 M,2.91 M,6.60 M,2025-12-01 00: 0000,2026-@1 - 01 @0000Q

@@ -1,5 +1,7 @@
 """Progress tracking singleton for pipeline steps."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 

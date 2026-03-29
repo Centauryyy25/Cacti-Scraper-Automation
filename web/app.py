@@ -1,4 +1,4 @@
-﻿"""Flask web application layer for CactiAutomation.
+"""Flask web application layer for CactiAutomation.
 
 Security hardened with:
 - Restricted CORS origins (configurable)
@@ -6,6 +6,8 @@ Security hardened with:
 - Health check endpoints
 - Production-safe defaults
 """
+
+from __future__ import annotations
 
 import json
 import os
@@ -71,7 +73,7 @@ _app_start_time = datetime.now()
 
 
 
-def execute_pipeline(date1, date2, target_url, userLogin, userpass, usernames):
+def execute_pipeline(date1, date2, target_url, user_login, user_pass, usernames):
     app.logger.info(
         "Starting pipeline | date1=%s date2=%s target_url=%s usernames=%s",
         date1, date2, target_url, ",".join(usernames) if isinstance(usernames, list) else usernames,
@@ -79,24 +81,24 @@ def execute_pipeline(date1, date2, target_url, userLogin, userpass, usernames):
     try:
         from main_pipeline import step1_scrape_images, step2_ocr_images, step3_clean_csv
 
-        step1_scrape_images(date1, date2, target_url, userLogin, userpass, usernames)
+        step1_scrape_images(date1, date2, target_url, user_login, user_pass, usernames)
 
         active_folder = progress.scraping.get('current_folder')
         if not active_folder:
-            raise Exception("Step 1 gagal menghasilkan folder untuk diproses.")
+            raise Exception("Step 1 failed to produce an output folder.")
 
         # Pass the images folder (raw_screenshots) to the OCR step
         images_folder = os.path.join(active_folder, "raw_screenshots")
         resulting_csv_path = step2_ocr_images(folder=images_folder)
         if not resulting_csv_path:
-            raise Exception("Step 2 (OCR) gagal menghasilkan file CSV.")
+            raise Exception("Step 2 (OCR) failed to produce a CSV file.")
 
         step3_clean_csv(csv_input=resulting_csv_path)
 
         with pipeline_lock:
             progress.scraping.update({
                 'status': 'complete',
-                'message': 'Proses selesai!'
+                'message': 'Pipeline complete!'
             })
 
     except Exception as e:
@@ -214,14 +216,14 @@ def run_pipeline():
             progress.scraping.update({
                 'current': 0,
                 'total': 4,
-                'message': 'Memulai proses...',
+                'message': 'Starting pipeline...',
                 'status': 'running',
                 'current_file': ''
             })
             progress.ocr.update({
                 'current': 0,
                 'total': 1,
-                'message': 'Menunggu...',
+                'message': 'Waiting...',
                 'status': 'idle',
                 'current_file': ''
             })
@@ -248,8 +250,8 @@ def run_pipeline():
             app.logger.warning("URL validation failed: %s (URL: %s)", error_msg, target_url)
             return jsonify({"status": "error", "message": f"Invalid URL: {error_msg}"}), 400
 
-        userLogin = data.get('userLogin')
-        userpass = data.get('userPass')
+        user_login = data.get('user_login')
+        user_pass = data.get('user_pass')
 
         app.logger.info(
             "Received /run_pipeline payload | date1=%s date2=%s target_url=%s usernames=%d",
@@ -258,7 +260,7 @@ def run_pipeline():
 
         worker_thread = Thread(
             target=execute_pipeline,
-            args=(date1, date2, target_url, userLogin, userpass, usernames),
+            args=(date1, date2, target_url, user_login, user_pass, usernames),
             daemon=True
         )
         worker_thread.start()
@@ -291,17 +293,17 @@ def download_csv():
                     folders.sort(reverse=True)
                     target_folder = os.path.join(base_folder, folders[0])
                 else:
-                    return "Tidak ada folder output yang ditemukan", 404
+                    return "No output folder found", 404
             else:
-                return "Folder output tidak ditemukan", 404
+                return "Output folder not found", 404
 
         folder_name = os.path.basename(target_folder)
 
         # Map format to filename pattern
         format_patterns = {
-            'original': [f"hasil_original_{folder_name}.csv", f"hasil_{folder_name}.csv"],
-            'mbps': [f"hasil_mbps_{folder_name}.csv"],
-            'kbps': [f"hasil_kbps_{folder_name}.csv"]
+            'original': [f"traffic_original_{folder_name}.csv", f"traffic_{folder_name}.csv"],
+            'mbps': [f"traffic_mbps_{folder_name}.csv"],
+            'kbps': [f"traffic_kbps_{folder_name}.csv"]
         }
 
         csv_files = format_patterns.get(csv_format, format_patterns['mbps'])
@@ -314,13 +316,13 @@ def download_csv():
                 break
 
         if csv_path:
-            app.logger.info(f"Mendownload file: {csv_path}")
+            app.logger.info(f"Downloading file: {csv_path}")
             return send_file(csv_path, as_attachment=True, download_name=os.path.basename(csv_path))
         else:
-            return f"File CSV format '{csv_format}' tidak ditemukan di folder: {target_folder}", 404
+            return f"CSV file format '{csv_format}' not found in folder: {target_folder}", 404
 
     except Exception as e:
-        return f"Error saat download: {str(e)}", 500
+        return f"Download error: {str(e)}", 500
 
 
 @app.route('/api/available_downloads')
@@ -347,9 +349,9 @@ def available_downloads():
 
         available = []
         format_files = {
-            'original': [f"hasil_original_{folder_name}.csv", f"hasil_{folder_name}.csv"],
-            'mbps': [f"hasil_mbps_{folder_name}.csv"],
-            'kbps': [f"hasil_kbps_{folder_name}.csv"]
+            'original': [f"traffic_original_{folder_name}.csv", f"traffic_{folder_name}.csv"],
+            'mbps': [f"traffic_mbps_{folder_name}.csv"],
+            'kbps': [f"traffic_kbps_{folder_name}.csv"]
         }
 
         for fmt, patterns in format_files.items():

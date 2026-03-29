@@ -1,4 +1,4 @@
-﻿"""Centralized logging configuration for the project.
+"""Centralized logging configuration for the project.
 
 Usage:
     from utils.logging_config import setup_logging
