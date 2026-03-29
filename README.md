@@ -1,4 +1,4 @@
-# Netflow Automation
+# Cacti Scraper Automation
 
 Automated network traffic data extraction pipeline for [Cacti NMS](https://www.cacti.net/). Scrapes traffic graphs via Selenium, extracts bandwidth values using OCR, and outputs clean CSV reports in multiple unit formats.
 
