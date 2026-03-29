@@ -1,77 +1,78 @@
-# Cacti NMS Pipeline
+# Netflow Automation
 
-Automated network traffic data extraction from Cacti NMS using Selenium, EasyOCR, and intelligent unit conversion.
+Automated network traffic data extraction pipeline for [Cacti NMS](https://www.cacti.net/). Scrapes traffic graphs via Selenium, extracts bandwidth values using OCR, and outputs clean CSV reports in multiple unit formats.
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
-![Flask](https://img.shields.io/badge/Flask-3.0+-green?logo=flask)
-![Selenium](https://img.shields.io/badge/Selenium-4.15+-orange?logo=selenium)
-![EasyOCR](https://img.shields.io/badge/EasyOCR-1.7+-purple)
-![License](https://img.shields.io/badge/License-MIT-yellow)
-![CI](https://github.com/Centauryyy25/cacti-automation-indonesia/actions/workflows/ci.yml/badge.svg)
+Built to replace hours of manual screenshot-and-copy workflows with a single command or web UI trigger.
+
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.0+-000000?logo=flask)
+![Selenium](https://img.shields.io/badge/Selenium-Headless-43B02A?logo=selenium&logoColor=white)
+![EasyOCR](https://img.shields.io/badge/EasyOCR-Text_Extraction-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+![CI](https://img.shields.io/github/actions/workflow/status/Centauryyy25/netflow-automation/ci.yml?label=CI&logo=githubactions&logoColor=white)
 
 ---
 
 ## Architecture
 
 ```
-                    Cacti NMS
-                        |
-           Step 1: Selenium Scraper
-           (login, navigate, screenshot)
-                        |
-                 raw_screenshots/
-                        |
-            Step 2: EasyOCR Processing
-            (preprocess, extract, parse)
-                        |
-              processed_output/*.json
-                        |
-           Step 3: CSV Generation
-           (unit detection & conversion)
-                        |
-        traffic_original.csv  traffic_mbps.csv  traffic_kbps.csv
+┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌────────────────┐
+│  Cacti NMS   │────▶│  Selenium     │────▶│  EasyOCR     │────▶│  CSV Generator │
+│  Web UI      │     │  Scraper      │     │  Processor   │     │  (3 formats)   │
+└─────────────┘     └──────────────┘     └──────────────┘     └────────────────┘
+       │                    │                    │                      │
+       │              raw_screenshots/     processed_output/     hasil_*.csv
+       │                                                        (original/mbps/kbps)
+       ▼
+  Flask Dashboard (localhost:5000)
+  - Configure targets & date ranges
+  - Trigger pipeline runs
+  - Download results
 ```
 
 ## Features
 
-- **Automated scraping** of Cacti NMS traffic graphs via Selenium with configurable headless mode
-- **OCR text extraction** using EasyOCR with image preprocessing for improved accuracy
-- **Intelligent unit conversion** with automatic bandwidth unit detection (bps, Kbps, Mbps)
-- **Three CSV output variants**: original values, normalized to Mbps, normalized to Kbps
-- **Web dashboard** built with Flask for one-click pipeline execution with real-time progress
-- **Observability** via Prometheus metrics endpoint, structured logging, and pipeline summaries
+- **Automated scraping** — Logs into Cacti NMS, navigates to traffic graphs, captures screenshots for specified devices and date ranges using headless Chrome.
+- **OCR extraction** — Processes graph screenshots with EasyOCR to extract bandwidth values (inbound/outbound traffic, peak/average).
+- **Multi-format output** — Generates three CSV variants per run: original values, normalized to Mbps, and normalized to Kbps.
+- **Web dashboard** — Flask-based UI for configuring scrape parameters, monitoring progress in real-time, and downloading results.
+- **Run tracking** — Each pipeline run is timestamped and produces a `summary.json` with success/failure counts, timing, and output paths.
+- **Configurable retries** — Exponential backoff for flaky network requests, configurable timeouts and retry limits.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Web Framework | Flask + Flask-CORS |
-| Scraping | Selenium + ChromeDriver |
-| OCR | EasyOCR + OpenCV |
-| Data Processing | Pandas + NumPy |
-| Configuration | Pydantic Settings |
-| Database | SQLite (pipeline metadata) |
-| CI/CD | GitHub Actions (ruff + pytest) |
+| Scraping | Selenium + ChromeDriver (auto-managed via `webdriver-manager`) |
+| OCR | EasyOCR (CPU or GPU) |
+| Web UI | Flask 3.x + Jinja2 templates |
+| Data Processing | Python `csv` module, custom unit converters |
+| Configuration | python-dotenv, environment variables |
+| Testing | pytest + pytest-cov |
 
 ## Project Structure
 
 ```
-cacti-nms-pipeline/
-├── web/                    # Flask web application
-├── scraping/               # Selenium scraper module
-├── ocr/                    # OCR processing (parallel support)
-├── cleaning/               # CSV generation & unit conversion
-├── storage/                # SQLite database layer
-├── observability/          # Prometheus metrics
-├── services/               # Email & Slack notifications
-├── tracking/               # Progress tracking for UI
-├── utils/                  # Logging, retry, summary parser
-├── templates/              # HTML templates (dashboard, logs, summary)
-├── tests/                  # Unit tests
-├── config.py               # Pydantic-based configuration
-├── main_pipeline.py        # 3-step pipeline orchestrator
-├── easyocr_image_to_text.py # OCR extraction engine
-└── graph_storage.py        # JSON-based graph data storage
+netflow-automation/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # Lint + test pipeline
+├── web/                        # Flask application & routes
+├── scraping/                   # Selenium-based Cacti scraper
+├── ocr/                        # EasyOCR image processing
+├── cleaning/                   # CSV generation & unit conversion
+├── tracking/                   # Pipeline progress tracker
+├── observability/              # Logging & monitoring utilities
+├── services/                   # Shared service layer
+├── storage/                    # File storage abstractions
+├── utils/                      # Logging config, helpers
+├── templates/                  # Jinja2 HTML templates
+├── tests/                      # Unit & integration tests
+├── main_pipeline.py            # Pipeline orchestrator (scrape → OCR → CSV)
+├── config.py                   # Centralized configuration
+├── pyproject.toml              # Project metadata & tool config
+├── requirements.txt            # Python dependencies
+└── .env.example                # Environment template (copy to .env)
 ```
 
 ## Getting Started
@@ -79,69 +80,63 @@ cacti-nms-pipeline/
 ### Prerequisites
 
 - Python 3.10+
-- Chrome or Chromium browser
-- ChromeDriver (auto-managed by `webdriver-manager`)
+- Google Chrome or Chromium
+- ChromeDriver (auto-installed by `webdriver-manager`)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/Centauryyy25/cacti-automation-indonesia.git
-cd cacti-automation-indonesia
+git clone https://github.com/Centauryyy25/netflow-automation.git
+cd netflow-automation
 
 # Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# .venv\Scripts\activate   # Windows
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
 
 # Install dependencies
 pip install -r requirements.txt
-```
 
-### Configuration
-
-```bash
+# Configure environment
 cp .env.example .env
-# Edit .env with your Cacti NMS credentials and server URL
+# Edit .env with your Cacti NMS credentials
 ```
 
 ### Usage
 
-#### Web Dashboard
+**Option A — Web Dashboard**
 
 ```bash
 python -m web.app
 # Open http://localhost:5000
 ```
 
-1. Enter your Cacti NMS URL, credentials, and device names
-2. Select the date range
-3. Click **Run Pipeline**
-4. Download results in your preferred format (Original / Mbps / Kbps)
+1. Enter your Cacti target URL, credentials, and device names.
+2. Select a date range.
+3. Click **Run Pipeline** and monitor progress.
+4. Download results in your preferred format (Original / Mbps / Kbps).
 
-#### CLI
+**Option B — CLI**
 
 ```bash
-# Run the full pipeline
 python main_pipeline.py
-
-# Run OCR only on existing screenshots
-python easyocr_image_to_text.py --folder output/<timestamp>/raw_screenshots
 ```
 
-## Output
+The pipeline runs all three steps sequentially: scrape → OCR → CSV generation.
 
-After a pipeline run, results are saved to `output/<timestamp>/`:
+### Output
+
+Each run creates a timestamped directory under `output/`:
 
 ```
 output/2026-01-03_14-30-00/
-├── raw_screenshots/            # Scraped graph images
-├── processed_output/           # OCR results (JSON)
-├── traffic_original_*.csv      # Raw extracted values
-├── traffic_mbps_*.csv          # All values in Mbps
-├── traffic_kbps_*.csv          # All values in Kbps
-├── summary.json                # Machine-readable run summary
-└── summary.log                 # Human-readable run summary
+├── raw_screenshots/        # Captured traffic graph images
+├── processed_output/       # OCR results (JSON)
+├── hasil_original_*.csv    # Raw extracted values
+├── hasil_mbps_*.csv        # Bandwidth in Mbps
+├── hasil_kbps_*.csv        # Bandwidth in Kbps
+└── summary.json            # Run metadata & statistics
 ```
 
 ## Testing
@@ -150,29 +145,23 @@ output/2026-01-03_14-30-00/
 # Run all tests
 python -m pytest
 
-# With coverage report
+# Run with coverage report
 python -m pytest --cov=. --cov-report=term-missing
 
-# Run specific test file
-python -m pytest tests/test_database.py -v
+# Run specific test module
+python -m pytest tests/test_cleaning.py -v
 ```
 
 ## Docker
 
 ```bash
 docker-compose up -d
-# Open http://localhost:5000
+# Dashboard available at http://localhost:5000
 ```
 
-## Configuration Reference
+## Configuration
 
-See [`.env.example`](.env.example) for all available configuration options including:
-
-- Cacti NMS URL and credentials
-- Selenium headless mode and timeouts
-- OCR settings (GPU, batch size, languages)
-- Retry configuration with exponential backoff
-- CORS origins and web server settings
+All configuration is managed through environment variables. See [`.env.example`](.env.example) for the full list of available options including Selenium timeouts, OCR settings, and retry behavior.
 
 ## Contributing
 
@@ -182,6 +171,8 @@ See [`.env.example`](.env.example) for all available configuration options inclu
 4. Push to the branch (`git push origin feature/your-feature`)
 5. Open a Pull Request
 
+Please ensure all tests pass and code follows the project's linting rules before submitting.
+
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
