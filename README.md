@@ -15,10 +15,7 @@ Built to replace hours of manual screenshot-and-copy workflows with a single com
 
 ## Architecture
 
-```
 ![Architecture-Cacti](Cacti-Arcitech.png)
-
-```
 
 ## Features
 
