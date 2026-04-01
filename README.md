@@ -16,18 +16,8 @@ Built to replace hours of manual screenshot-and-copy workflows with a single com
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌────────────────┐
-│  Cacti NMS   │────▶│  Selenium     │────▶│  EasyOCR     │────▶│  CSV Generator │
-│  Web UI      │     │  Scraper      │     │  Processor   │     │  (3 formats)   │
-└─────────────┘     └──────────────┘     └──────────────┘     └────────────────┘
-       │                    │                    │                      │
-       │              raw_screenshots/     processed_output/     hasil_*.csv
-       │                                                        (original/mbps/kbps)
-       ▼
-  Flask Dashboard (localhost:5000)
-  - Configure targets & date ranges
-  - Trigger pipeline runs
-  - Download results
+<img width="2816" height="1536" alt="Cacti-Arcitech" src="https://github.com/user-attachments/assets/70b7de6d-0ef5-4fbe-b178-79127659daad" />
+
 ```
 
 ## Features
