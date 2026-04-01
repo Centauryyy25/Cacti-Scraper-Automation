@@ -16,7 +16,7 @@ Built to replace hours of manual screenshot-and-copy workflows with a single com
 ## Architecture
 
 ```
-<img width="2816" height="1536" alt="Cacti-Arcitech" src="https://github.com/user-attachments/assets/70b7de6d-0ef5-4fbe-b178-79127659daad" />
+<img width="2816" height="1536" alt="Cacti-Arcitech" src="/Cacti-Arcitech.png" />
 
 ```
 
